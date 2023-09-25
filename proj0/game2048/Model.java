@@ -1,7 +1,6 @@
 package game2048;
 
-import java.util.Formatter;
-import java.util.Observable;
+import java.util.*;
 
 
 /**
@@ -123,6 +122,52 @@ public class Model extends Observable {
         setChanged();
     }
 
+
+
+    public boolean unitTilt(boolean changed, Map<Integer, Integer> skipMergedCoordinates) {
+
+        //First, traverse the topmost row(row 3rd) otherwise it's hard to analyze.
+        for (int row = board.size() - 2; row >= 0; row--) {
+            for (int col = 0; col < board.size(); col++) {
+                Tile tile = board.tile(col, row);
+                if (tile == null) {
+                    continue;
+                }
+                //tileUp is the tile above the current tile
+                Tile tileUp = board.tile(col, row + 1);
+                boolean isMerged = false;
+                if (tileUp == null) {
+                    isMerged = board.move(col, row + 1, tile);
+                    changed = true;
+                } else if (tileUp.value() == tile.value()) {
+                    //check if the tile above has been merged
+                    boolean isExist = skipMergedCoordinates.containsKey(tileUp.col());
+                    if (isExist && skipMergedCoordinates.get(tileUp.col()) == tileUp.row()) {
+                        continue;
+                    }
+                    isExist = skipMergedCoordinates.containsKey(tile.col());
+                    if (isExist && skipMergedCoordinates.get(tile.col()) == tile.row()) {
+                        continue;
+                    }
+                    //try to merge the tile
+                    isMerged = board.move(col, row + 1, tile);
+                    changed = true;
+                } else {//tileUp.value() != tile.value()
+                    continue;
+                }
+                //get the tile after the tile has been moved
+                tileUp = tile.next();
+                if (isMerged && tileUp != null) {
+                    score += tileUp.value();
+                    //record the merged tile
+                    skipMergedCoordinates.put(tileUp.col(), tileUp.row());
+                }
+            }
+        }
+
+        return changed;
+    }
+
     /**
      * Tilt the board toward SIDE. Return true iff this changes the board.
      * <p>
@@ -137,13 +182,28 @@ public class Model extends Observable {
      * and the trailing tile does not.
      */
     public boolean tilt(Side side) {
+        //will change the behavior of the tile and move classes
+        // so that they behave as if the given side was NORTH.
+        board.setViewingPerspective(side);
         boolean changed;
         changed = false;
+        checkGameOver();
+        if (gameOver) {
+            return changed;
+        }
 
-        // TODO: Modify this.board (and perhaps this.score) to account
-        // for the tilt to the Side SIDE. If the board changed, set the
-        // changed local variable to true.
+        //The entire chessboard only needs to be reset 3 times.
+        // The first time may be the merging of lines 0-2 and line 3,
+        // the second time is the merging of lines 0-1 and line 2,
+        // and the last time is the merging of lines 0 and 1.
+        int rounds = 0;
+        Map<Integer, Integer> skipMergedCoordinates = new HashMap<>();
+        while (rounds < 3) {
+            changed = unitTilt(changed, skipMergedCoordinates);
+            rounds++;
+        }
 
+        board.setViewingPerspective(Side.NORTH);
         checkGameOver();
         if (changed) {
             setChanged();
@@ -208,7 +268,7 @@ public class Model extends Observable {
         if (emptySpaceExists(b)) {
             return true;
         }
- // These code is not so good,because it will repeat check the same tile
+        // These code is not so good,because it will repeat check the same tile
 //        int size = b.size();
 //        for (int i = 0; i < size; i++) {
 //            for (int j = 0; j < size; j++) {
@@ -239,11 +299,11 @@ public class Model extends Observable {
 //
 //            }
 //        }
-        for(int i = 0; i < b.size(); i ++ ) {
-            for(int j = 0; j < b.size(); j ++ ) {
+        for (int i = 0; i < b.size(); i++) {
+            for (int j = 0; j < b.size(); j++) {
                 boolean leftOrRight = j + 1 < b.size() && b.tile(i, j).value() == b.tile(i, j + 1).value();
                 boolean upOrDown = i + 1 < b.size() && b.tile(i, j).value() == b.tile(i + 1, j).value();
-                if(leftOrRight || upOrDown) {
+                if (leftOrRight || upOrDown) {
                     return true;
                 }
             }
