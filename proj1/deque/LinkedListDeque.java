@@ -180,7 +180,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
 
     @Override
     public Iterator<T> iterator() {
-        return new IteratorHelper<>(sentinel.next);
+        return new IteratorHelper(sentinel.next);
     }
 
     @Override
@@ -201,7 +201,7 @@ public class LinkedListDeque<T> implements Iterable<T> {
         return result;
     }
 
-    public class IteratorHelper<T> implements Iterator<T> {
+    public class IteratorHelper implements Iterator<T> {
         private Node<T> _start;
 
         public IteratorHelper(Node<T> start) {

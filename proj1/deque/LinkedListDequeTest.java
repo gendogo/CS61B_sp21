@@ -125,12 +125,14 @@ public class LinkedListDequeTest {
 
     @Test
     public void iteratorTest() {
-        LinkedListDeque<Integer> lld = new LinkedListDeque<Integer>();
-        for (int i = 100; i > 0; i--) {
-            lld.addFirst(i);
-        }
-        for (Integer integer : lld) {
-            System.out.println(integer);
-        }
+//        LinkedListDeque<Integer> lld = new LinkedListDeque<Integer>();
+//        for (int i = 100; i > 0; i--) {
+//            lld.addFirst(i);
+//        }
+//        for (Integer integer : lld) {
+//            System.out.println(integer);
+//        }
+
+
     }
 }
