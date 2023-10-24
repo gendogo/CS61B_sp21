@@ -117,7 +117,15 @@ public class ArrayDequeTest {
         System.out.println();
         System.out.println(ad1.size());
         System.out.println(ad1.getLength());
+    }
 
+    @Test
+    public void getTest(){
+        ArrayDeque<Integer> ad1 = new ArrayDeque<>();
+        ad1.addFirst(1);
+        ad1.addLast(2);
+        System.out.println(ad1.get(0));
+        System.out.println(ad1.get(1));
 
     }
 }
