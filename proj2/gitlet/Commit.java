@@ -3,41 +3,38 @@ package gitlet;
 // TODO: any imports you need here
 
 import java.io.Serializable;
-import java.util.Date; // TODO: You'll likely use this in this class
-import java.util.List;
-import java.util.Map;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 /** Represents a gitlet commit object.
- *  TODO: It's a good idea to give a description here of what else this Class
  *  does at a high level.
  *
- *  @author TODO
+ *  @author whj
  */
 public class Commit implements Serializable {
-    /**
-     * TODO: add instance variables here.
-     *
-     * List all instance variables of the Commit class here with a useful
-     * comment above them describing what that variable represents and how that
-     * variable is used. We've provided one example for `message`.
-     */
 
-    /** The message of this Commit. */
     private String message;
     // The parents of this commit(hashID)
     private List<String> parents;
     //create timestamp
     private String creatTime;
     //get the list from index file which contains blob's name and location
-    private String blobList;
+    private Map<String,String> blobList;
     private String author;
+    public static final String AUTHOR = "whj";
+    public static final ZoneId ZONEID = ZoneId.of("America/Los_Angeles");
 
-    public String getAuthor() {
-        return author;
-    }
-
-    public void setAuthor(String author) {
-        this.author = author;
+    public Commit(String message) {
+        this.message = message;
+        this.parents = new ArrayList<>();
+        this.blobList = new TreeMap<>();
+        this.author = AUTHOR;
+        ZonedDateTime timeWithoutFormat = Instant.now().atZone(ZONEID);
+        String timeWithFormat = DateTimeFormatter.ofPattern("EEE MMM d HH:mm:ss yyyy Z").format(timeWithoutFormat);
+        this.creatTime = timeWithFormat;
     }
 
     public String getMessage() {
@@ -64,21 +61,29 @@ public class Commit implements Serializable {
         this.creatTime = creatTime;
     }
 
-    public String getBlobList() {
+    public Map<String, String> getBlobList() {
         return blobList;
     }
 
-    public void setBlobList(String blobList) {
+    public void setBlobList(Map<String, String> blobList) {
         this.blobList = blobList;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(String author) {
+        this.author = author;
     }
 
     @Override
     public String toString() {
         return "Commit{" +
                 "message='" + message + '\'' +
-                ", parents=" + parents +
+                ", parents=" + parents.toString() +
                 ", creatTime='" + creatTime + '\'' +
-                ", blobList='" + blobList + '\'' +
+                ", blobList=" + blobList.toString() +
                 ", author='" + author + '\'' +
                 '}';
     }

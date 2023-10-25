@@ -19,17 +19,8 @@ import static gitlet.Utils.*;
  * @author whj
  */
 public class Repository {
-    /**
-     * TODO: add instance variables here.
-     *
-     * List all instance variables of the Repository class here with a useful
-     * comment above them describing what that variable represents and how that
-     * variable is used. We've provided two examples for you.
-     */
 
-    /**
-     * The current working directory.
-     */
+    //The current working directory.
     public static final File CWD = new File(System.getProperty("user.dir"));
     /**
      * The .gitlet directory.
@@ -37,8 +28,8 @@ public class Repository {
     public static final File GITLET_DIR = join(CWD, ".gitlet");
     //system-dependent file separator character
     public static final String FILESEPARATOR = System.getProperty("file.separator");
-    public static final ZoneId ZONEID = ZoneId.of("America/Los_Angeles");
-    public static final String AUTHOR = "whj";
+
+
 
     public static boolean isEmptyArgs(String[] args) {
         if (args == null || args.length == 0) {
@@ -49,7 +40,7 @@ public class Repository {
     }
 
     public static boolean isValidateLength(String[] args, int length) {
-        if (args.length >= length) {
+        if (args.length == length) {
             return true;
         }
         System.out.println("Incorrect operands.");
@@ -57,14 +48,21 @@ public class Repository {
     }
 
     public static void gitAddCommand(String[] args) {
-        // 判断参数长度是否大于等于2
         if (!isValidateLength(args, 2)) {
+            System.out.println("In gitlet, only one file may be added at a time.");
             System.exit(-1);
         }
         if (!GITLET_DIR.exists()) {
             System.out.println("Not in an initialized Gitlet directory.");
             System.exit(-1);
         }
+        File file = join(CWD, args[1]);
+        if(!file.exists()){
+            System.out.println("File does not exist");
+            System.exit(-1);
+        }
+        //TODO generate blob
+        //TODO generate blob name :hash into index file
 
 
     }
@@ -93,26 +91,19 @@ public class Repository {
         try {
             HEAD.createNewFile();
             index.createNewFile();
-            gitInitCommandHelper(HEAD, index);
+            gitInitCommandHelper(HEAD);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
 
-    public static void gitInitCommandHelper(File HEAD, File index) {
+    public static void gitInitCommandHelper(File HEAD) {
         //create commit for init command
-        Commit initCommit = new Commit();
-        initCommit.setMessage("initial commit");
-        ZonedDateTime timeWithoutFormat = Instant.ofEpochSecond(0L).atZone(ZONEID);
+        Commit initCommit = new Commit("initial commit");
+        ZonedDateTime timeWithoutFormat = Instant.ofEpochSecond(0L).atZone(Commit.ZONEID);
         String timeWithFormat = DateTimeFormatter.ofPattern("EEE MMM d HH:mm:ss yyyy Z").format(timeWithoutFormat);
         initCommit.setCreatTime(timeWithFormat);
-        initCommit.setParents(new ArrayList<>());
-        List<String> parents = initCommit.getParents();
-        parents.add("");
-        initCommit.setBlobList("");
-        initCommit.setAuthor(AUTHOR);
-
         // set HEAD point to master branch
         Utils.writeContents(HEAD, "refs/heads/master");
         File masterFile = join(GITLET_DIR, "refs", "heads", "master");
@@ -134,11 +125,7 @@ public class Repository {
         }
     }
 
-    public static String gitCreateTime() {
-        ZonedDateTime timeWithoutFormat = Instant.now().atZone(ZONEID);
-        String timeWithFormat = DateTimeFormatter.ofPattern("EEE MMM d HH:mm:ss yyyy Z").format(timeWithoutFormat);
-        return timeWithFormat;
-    }
+
 
 
 }
