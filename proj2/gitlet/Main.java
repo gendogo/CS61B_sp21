@@ -12,8 +12,9 @@ public class Main {
      * <COMMAND> <OPERAND1> <OPERAND2> ...
      */
     public static void main(String[] args) {
-        if (Repository.isEmptyArgs(args)) {
-            System.exit(-1);
+        if (args.length == 0) {
+            System.out.println("Please enter a command.");
+            System.exit(0);
         }
         String firstArg = args[0];
         switch (firstArg) {

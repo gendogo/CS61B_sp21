@@ -9,6 +9,8 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+import static gitlet.Utils.sha1;
+
 /** Represents a gitlet commit object.
  *  does at a high level.
  *
@@ -26,23 +28,34 @@ public class Commit implements Serializable {
     private String author;
     public static final String AUTHOR = "whj";
     public static final ZoneId ZONEID = ZoneId.of("America/Los_Angeles");
+    //hash id of this commit
+
+
+    public String getId() {
+        return sha1(this.toString());
+    }
 
     public Commit(String message) {
         this.message = message;
         this.parents = new ArrayList<>();
         this.blobList = new TreeMap<>();
         this.author = AUTHOR;
+        this.creatTime = getTimeWithFormat();
+    }
+
+    public static String getTimeWithFormat() {
         ZonedDateTime timeWithoutFormat = Instant.now().atZone(ZONEID);
         String timeWithFormat = DateTimeFormatter.ofPattern("EEE MMM d HH:mm:ss yyyy Z").format(timeWithoutFormat);
-        this.creatTime = timeWithFormat;
+        return timeWithFormat;
+    }
+    public static String getInitTime(){
+        ZonedDateTime timeWithoutFormat = Instant.ofEpochSecond(0L).atZone(Commit.ZONEID);
+        String timeWithFormat = DateTimeFormatter.ofPattern("EEE MMM d HH:mm:ss yyyy Z").format(timeWithoutFormat);
+        return timeWithFormat;
     }
 
     public String getMessage() {
         return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
     }
 
     public List<String> getParents() {
@@ -57,10 +70,6 @@ public class Commit implements Serializable {
         return creatTime;
     }
 
-    public void setCreatTime(String creatTime) {
-        this.creatTime = creatTime;
-    }
-
     public Map<String, String> getBlobList() {
         return blobList;
     }
@@ -73,8 +82,8 @@ public class Commit implements Serializable {
         return author;
     }
 
-    public void setAuthor(String author) {
-        this.author = author;
+    public void setCreatTime(String creatTime) {
+        this.creatTime = creatTime;
     }
 
     @Override
