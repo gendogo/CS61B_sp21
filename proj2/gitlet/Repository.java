@@ -2,6 +2,7 @@ package gitlet;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 
 import static gitlet.Utils.*;
 
@@ -22,14 +23,14 @@ public class Repository {
     public static final File GITLET_DIR = join(CWD, ".gitlet");
     public static final File MASTERBRANCH = join(GITLET_DIR, "refs", "heads", "master");
     // //a list that contains every file that Git has been told to keep track of.
-    public static final File INDEX = join(GITLET_DIR, "index");
     public static final File HEADBLOB = join(GITLET_DIR, "HEAD");
-    public static final File HEADS = join(GITLET_DIR, "refs", "heads");
+    public static final File HEADSFOLDER = join(GITLET_DIR, "refs", "heads");
     public static final File OBJECTS = join(GITLET_DIR, "objects");
     //system-dependent file separator character
     public static final String FILESEPARATOR = System.getProperty("file.separator");
     // used to point to  a commit be created at this time
     public static Commit currentCommit;
+    public static String currentBranchName;
 
 
 
@@ -46,21 +47,49 @@ public class Repository {
             System.out.println("In gitlet, only one file may be added at a time.");
             System.exit(0);
         }
-        if (!GITLET_DIR.exists()) {
-            System.out.println("Not in an initialized Gitlet directory.");
-            System.exit(0);
-        }
-        File file = join(CWD, args[1]);
+        checkInitializion();
+        File file = getThisFile(args[1]);
+        checkFileExistence(file);
+
+        Blob blob = new Blob(file);
+        saveBlob(blob);
+
+
+
+
+
+    }
+
+    private static void saveBlob(Blob blob) {
+        //create this blob
+        String originFileName = blob.getFileName();
+        String path = blob.getBlobPath();
+        File thisBlob = Utils.join(GITLET_DIR,path);
+
+
+
+
+        //TODO update stage file
+    }
+
+    private static File getThisFile(String file) {
+        return Paths.get(file).isAbsolute()
+                ? new File(file)
+                : join(CWD, file);
+    }
+
+    private static void checkFileExistence(File file) {
         if(!file.exists()){
             System.out.println("File does not exist");
             System.exit(0);
         }
-        //TODO create stagingArea object and write it into index file
-        //TODO generate blob folder
-        //TODO copy the file in working area into blob folder with hash name
-        //TODO generate blob name :hash into index file
+    }
 
-
+    private static void checkInitializion() {
+        if (!GITLET_DIR.exists()) {
+            System.out.println("Not in an initialized Gitlet directory.");
+            System.exit(0);
+        }
     }
 
     public static void gitInitCommand(String[] args) {
@@ -76,21 +105,21 @@ public class Repository {
         //Create .git/objects folder which contains commits and blobs
         OBJECTS.mkdir();
         //Create .git/refs/ and .git/refs/heads/ folder which contains branch file
-        HEADS.mkdirs();
+        HEADSFOLDER.mkdirs();
 
         try {
-            //Create HEAD and index file
+            //Create HEAD  file
             HEADBLOB.createNewFile();
-            INDEX.createNewFile();
             //create commit for init command
             currentCommit = new Commit("initial commit");
             currentCommit.setCreatTime(Commit.getInitTime());
             //get id of this commit
-            String blob = currentCommit.getId();
+            String blobId = currentCommit.getId();
             //create the path and blob
-            createCommitBlob(blob);
+            createCommitBlob(blobId);
             // Head points to master branch, master blob records recent commit
-            setHeadAndBranch(MASTERBRANCH, blob,"master");
+            currentBranchName = "master";
+            setHeadAndBranch(MASTERBRANCH, blobId,currentBranchName);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -119,6 +148,8 @@ public class Repository {
         messageInHeadBlob = "refs/heads/" + messageInHeadBlob;
         setHeadMessage(messageInHeadBlob);
     }
+
+
     //write the hash of this commit into this \refs\heads\branch file
     private static void updateBranchBlob(File branch, String commitID) throws IOException {
         if(!branch.exists()){
