@@ -23,8 +23,12 @@ public class Main {
                 break;
             case "add":
                 Repository.gitAddCommand(args);
-                // TODO: handle the `add [filename]` command
                 break;
+            case "commit":
+
+                // TODO: need to clean stage and set all files is stage be committed
+                break;
+
             default:
                 System.out.println("No command with that name exists.");
                 break;

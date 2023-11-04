@@ -1,6 +1,7 @@
 package gitlet;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.Arrays;
 
 /**
@@ -8,7 +9,7 @@ import java.util.Arrays;
  * @Author: whj
  * @Date: 2023-10-28 21:52
  */
-public class Blob {
+public class Blob implements Serializable {
     // hash name of this blob
     private String hashID;
     //content of this blob
@@ -19,6 +20,8 @@ public class Blob {
     private String filePath;
     //path of this blob in .gitlet folder
     private String blobPath;
+    private Boolean commitStatus;
+
 
     public Blob(File file) {
         saveMessage(file);
@@ -34,7 +37,7 @@ public class Blob {
         StringBuilder stringBuilder = new StringBuilder();
         blobPath = stringBuilder.append("objects").append(Repository.FILESEPARATOR).
                 append(folderName).append(Repository.FILESEPARATOR).append(blobName).toString();
-
+        commitStatus = false;
     }
 
     public String getHashID() {
@@ -57,10 +60,18 @@ public class Blob {
         return blobPath;
     }
 
+    public Boolean isCommitted() {
+        return commitStatus;
+    }
+
+    public void commitThisBlob() {
+        this.commitStatus = true;
+    }
+
     @Override
     public String toString() {
-        return "BlobOfFile{" +
-                "id='" + hashID + '\'' +
+        return "Blob{" +
+                "hashID='" + hashID + '\'' +
                 ", bytes=" + Arrays.toString(bytes) +
                 ", fileName='" + fileName + '\'' +
                 ", filePath='" + filePath + '\'' +

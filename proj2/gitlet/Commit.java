@@ -38,7 +38,7 @@ public class Commit implements Serializable {
     public Commit(String message) {
         this.message = message;
         this.parents = new ArrayList<>();
-        this.blobList = new TreeMap<>();
+        this.blobList = new HashMap<>();
         this.author = AUTHOR;
         this.creatTime = getTimeWithFormat();
     }
