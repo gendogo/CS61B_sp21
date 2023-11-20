@@ -14,13 +14,10 @@ public class Blob implements Serializable {
     private String hashID;
     //content of this blob
     private byte[] bytes;
-    // origin name of this blob before transferred
+    // origin name of this blob
     private String fileName;
-    // origin path of this blob before transferred
+    // origin path of this blob
     private String filePath;
-    //path of this blob in .gitlet folder
-    private String blobPath;
-    private Boolean commitStatus;
 
 
     public Blob(File file) {
@@ -32,12 +29,6 @@ public class Blob implements Serializable {
         filePath = file.getPath();
         fileName = file.getName();
         hashID = Utils.sha1(fileName,filePath,bytes);
-        String folderName = hashID.substring(0, 2);
-        String blobName = hashID.substring(2);
-        StringBuilder stringBuilder = new StringBuilder();
-        blobPath = stringBuilder.append("objects").append(Repository.FILESEPARATOR).
-                append(folderName).append(Repository.FILESEPARATOR).append(blobName).toString();
-        commitStatus = false;
     }
 
     public String getHashID() {
@@ -54,28 +45,5 @@ public class Blob implements Serializable {
 
     public String getFilePath() {
         return filePath;
-    }
-
-    public String getBlobPath() {
-        return blobPath;
-    }
-
-    public Boolean isCommitted() {
-        return commitStatus;
-    }
-
-    public void commitThisBlob() {
-        this.commitStatus = true;
-    }
-
-    @Override
-    public String toString() {
-        return "Blob{" +
-                "hashID='" + hashID + '\'' +
-                ", bytes=" + Arrays.toString(bytes) +
-                ", fileName='" + fileName + '\'' +
-                ", filePath='" + filePath + '\'' +
-                ", blobPath='" + blobPath + '\'' +
-                '}';
     }
 }

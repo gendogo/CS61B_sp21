@@ -3,6 +3,8 @@ package gitlet;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Map;
+import java.util.Set;
 
 import static gitlet.Utils.*;
 
@@ -21,12 +23,15 @@ public class Repository {
      * The .gitlet directory.
      */
     public static final File GITLET_DIR = join(CWD, ".gitlet");
-    public static final File STAGE = Utils.join(GITLET_DIR, "stage");
-    public static final File MASTERBRANCH = join(GITLET_DIR, "refs", "heads", "master");
-    // //a list that contains every file that Git has been told to keep track of.
-    public static final File HEADBLOB = join(GITLET_DIR, "HEAD");
-    public static final File HEADSFOLDER = join(GITLET_DIR, "refs", "heads");
-    public static final File OBJECTS = join(GITLET_DIR, "objects");
+    public static final File REFS_DIR = join(GITLET_DIR, "refs");
+    public static final File OBJECTS_DIR = join(GITLET_DIR, "objects");
+    public static final File HEADS_DIR = join(REFS_DIR, "heads");
+    public static final File MASTERBRANCH = join(HEADS_DIR, "master");
+    public static final File HEAD_FILE = join(GITLET_DIR, "HEAD");
+    public static final File STAGEFORADD = join(GITLET_DIR, "stage_add");
+    public static final File STAGEFORREMOVE = join(GITLET_DIR, "stage_remove");
+
+
     //system-dependent file separator character
     public static final String FILESEPARATOR = System.getProperty("file.separator");
     // used to point to  a commit be created at this time
@@ -43,6 +48,39 @@ public class Repository {
         return false;
     }
 
+    public static void gitInitCommand(String[] args) {
+        if (!isValidateLength(args, 1)) {
+            System.exit(0);
+        }
+        if (GITLET_DIR.exists()) {
+            System.out.println("A Gitlet version-control system already exists in the current directory.");
+            System.exit(0);
+        }
+        //Create .git folder
+        GITLET_DIR.mkdir();
+        //Create .git/objects folder which contains commits and blobs
+        OBJECTS_DIR.mkdir();
+        //Create .git/refs/ and .git/refs/heads/ folder which contains branch file
+        HEADS_DIR.mkdirs();
+
+        try {
+            //Create HEAD  file
+            HEAD_FILE.createNewFile();
+            //create commit for init command
+            currentCommit = new Commit("initial commit");
+            currentCommit.setCreatTime(Commit.getInitTime());
+            //get id of this commit
+            currentCommit.setHashId();
+            String blobId = currentCommit.getHashId();
+            //create the path and blob
+            saveCommitBlob(blobId);
+            // Head points to master branch, master blob records recent commit
+            setHeadAndHeadFolder(MASTERBRANCH, blobId, "master");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static void gitAddCommand(String[] args) {
         if (!isValidateLength(args, 2)) {
             System.out.println("In gitlet, only one file may be added at a time.");
@@ -53,39 +91,87 @@ public class Repository {
         checkFileExistence(file);
 
         Blob blob = new Blob(file);
-        saveBlobToStage(blob);
+        updateStageArea(blob);
     }
 
-    //add this blob to Map, save this blob, update stage file
-    private static void saveBlobToStage(Blob blob) {
-        currentStage = getCurrentStage();
-        Boolean isAdded = currentStage.addIntoStage(blob);
-        if(isAdded){
-            Repository.saveBlob(blob);
-            Repository.updateStageBlob(currentStage);
+    private static void updateStageArea(Blob blob) {
+        currentCommit = getCurrentCommit();
+        Stage addStage = getStage(STAGEFORADD);
+        Stage removeStage = getStage(STAGEFORREMOVE);
+
+        Map<String, String> blobPathInCurrentCommit = currentCommit.getBlobPath();
+        Map<String, String> blobPathInAddStage = addStage.getBlobPath();
+        Map<String, String> blobPathInRemoveStage = removeStage.getBlobPath();
+        boolean isInCurrentCommit = blobPathInCurrentCommit.containsValue(blob.getHashID());
+        boolean isInRemoveStage = removeStage.getBlobPath().containsValue(blob.getHashID());
+        boolean isInAddStage = addStage.getBlobPath().containsValue(blob.getHashID());
+
+        // Check if the blob is in the current commit
+        if (isInCurrentCommit) {
+            return;
         }
-    }
-
-    private static void updateStageBlob(Stage currentStage) {
-        writeObject(STAGE, currentStage);
-    }
-
-    private static Stage getCurrentStage() {
-        try {
-            if (!STAGE.exists()) {
-                STAGE.createNewFile();
-                Stage stage = new Stage();
-                Utils.writeObject(STAGE, stage);
+        // Check if the blob is already in the add stage area.
+        if (!isInAddStage) { //new blob,need to store
+            if (isInRemoveStage) {
+                blobPathInRemoveStage.remove(blob.getFileName());
+                //generate new removeStage file
+                Utils.writeObject(STAGEFORREMOVE, removeStage);
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+            blobPathInAddStage.put(blob.getFileName(), blob.getHashID());
+            //update the addStage file and save the blob object
+            //update the addStage file
+            Utils.writeObject(STAGEFORADD, addStage);
+            //save the blob object to this blob file in objects folder
+            File blobFile = createBlobFile(blob.getHashID());
+            Utils.writeObject(blobFile, blob);
         }
-        Stage stage = Utils.readObject(STAGE, Stage.class);
-        if (stage == null) {
-            stage = new Stage();
-        }
-        return stage;
     }
+
+
+    private static Stage getStage(File stageFile) {
+        if (!stageFile.exists()) {
+            return new Stage();
+        }
+        return readObject(stageFile, Stage.class);
+    }
+
+
+    public static void gitCommitCommand(String[] args) {
+        //commit -m "message"
+        if (!isValidateLength(args, 3)) {
+            System.exit(0);
+        }
+        checkInitializion();
+
+//        currentStage = getCurrentStage();
+        Map<String, String> blobIDListFromStage = currentStage.getBlobPath();
+        if (blobIDListFromStage == null || blobIDListFromStage.size() == 0) {
+            //nothing need to be committed
+            System.exit(0);
+        }
+        currentCommit = getCurrentCommit();
+        String parentCommitId = currentCommit.getHashId();
+        Map<String, String> parentBlobList = currentCommit.getBlobPath();
+        Set<String> keySet = blobIDListFromStage.keySet();
+        //combine list of blobs from parent commit and stage
+        for (String subKey : keySet) {
+            parentBlobList.put(subKey, blobIDListFromStage.get(subKey));
+        }
+        currentCommit = new Commit(args[2]);
+        currentCommit.setBlobPath(parentBlobList);
+        currentCommit.setParent(parentCommitId);
+        currentCommit.setHashId();
+        //remove message in stage file;
+        Stage stage = new Stage();
+//        Utils.writeObject(STAGE, stage);
+        String currentCommitHashId = currentCommit.getHashId();
+        //create commit blob in .git/object folder
+        saveCommitBlob(currentCommitHashId);
+        // Head points to master branch, master blob records recent commit
+        currentBranchName = "master";
+        setHeadAndHeadFolder(MASTERBRANCH, currentCommitHashId, currentBranchName);
+    }
+
 
     private static File getThisFile(String file) {
         return Paths.get(file).isAbsolute()
@@ -107,55 +193,16 @@ public class Repository {
         }
     }
 
-    public static void gitInitCommand(String[] args) {
-        if (!isValidateLength(args, 1)) {
-            System.exit(0);
-        }
-        if (GITLET_DIR.exists()) {
-            System.out.println("A Gitlet version-control system already exists in the current directory.");
-            System.exit(0);
-        }
-        //Create .git folder
-        GITLET_DIR.mkdir();
-        //Create .git/objects folder which contains commits and blobs
-        OBJECTS.mkdir();
-        //Create .git/refs/ and .git/refs/heads/ folder which contains branch file
-        HEADSFOLDER.mkdirs();
-
-        try {
-            //Create HEAD  file
-            HEADBLOB.createNewFile();
-            //create commit for init command
-            currentCommit = new Commit("initial commit");
-            currentCommit.setCreatTime(Commit.getInitTime());
-            //get id of this commit
-            String blobId = currentCommit.getId();
-            //create the path and blob
-            saveCommitBlob(blobId);
-            // Head points to master branch, master blob records recent commit
-            currentBranchName = "master";
-            setHeadAndBranch(MASTERBRANCH, blobId, currentBranchName);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
 
     private static void saveCommitBlob(String blobID) {
         File blobFile = createBlobFile(blobID);
-        //save the initCommit object to this blob file in objects folder
+        //save the Commit object to this blob file in objects folder
         Utils.writeObject(blobFile, currentCommit);
-    }
-
-    private static void saveBlob(Blob blob) {
-        File blobFile = createBlobFile(blob.getHashID());
-        //save the initCommit object to this blob file in objects folder
-        Utils.writeObject(blobFile, blob);
     }
 
     private static File createBlobFile(String blobID) {
         //create the folder of this blob
-        File blobFolder = join(GITLET_DIR, "objects", blobID.substring(0, 2));
+        File blobFolder = join(OBJECTS_DIR, blobID.substring(0, 2));
         if (!blobFolder.exists()) {
             blobFolder.mkdir();
         }
@@ -171,26 +218,44 @@ public class Repository {
         return blobFile;
     }
 
-    private static void setHeadAndBranch(File branch, String commitID, String messageInHeadBlob) throws IOException {
-        updateBranchBlob(branch, commitID);
-        // set HEAD point to this branch
-        messageInHeadBlob = "refs/heads/" + messageInHeadBlob;
-        setHeadMessage(messageInHeadBlob);
+    private static Commit getCurrentCommit() {
+        return getCommitFromHead();
+    }
+
+    private static Commit getCommitFromHead() {
+        String headContent = readContents(HEAD_FILE).toString();
+        //head is pointing to a branch
+        if (headContent.contains("refs/heads/")) {
+            String[] split = headContent.split("/");
+            currentBranchName = split[split.length - 1];
+            //get the hashId of this commit
+            String id = readContents(join(HEADS_DIR, currentBranchName)).toString();
+            //return commit object
+            return readObject(join(OBJECTS_DIR, id.substring(0, 2), id.substring(2)), Commit.class);
+        } else { //head is detached
+            return readObject(join(OBJECTS_DIR, headContent.substring(0, 2), headContent.substring(2)), Commit.class);
+        }
+    }
+
+    private static void saveBlob(Blob blob) {
+        File blobFile = createBlobFile(blob.getHashID());
+        //save the initCommit object to this blob file in objects folder
+        Utils.writeObject(blobFile, blob);
     }
 
 
-    //write the hash of this commit into this \refs\heads\branch file
-    private static void updateBranchBlob(File branch, String commitID) throws IOException {
+    private static void setHeadAndHeadFolder(File branch, String commitID, String currentBranchName) {
+        //write the hash of this commit into this \refs\heads\branch file
         if (!branch.exists()) {
-            branch.createNewFile();
+            try {
+                branch.createNewFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         Utils.writeContents(branch, commitID);
+        // set HEAD point to this branch
+        currentBranchName = "refs/heads/" + currentBranchName;
+        Utils.writeContents(HEAD_FILE, currentBranchName);
     }
-
-    // record the commit that the HEAD points to
-    private static void setHeadMessage(String x) {
-        Utils.writeContents(HEADBLOB, x);
-    }
-
-
 }

@@ -25,8 +25,7 @@ public class Main {
                 Repository.gitAddCommand(args);
                 break;
             case "commit":
-
-                // TODO: need to clean stage and set all files is stage be committed
+                Repository.gitCommitCommand(args);
                 break;
 
             default:
